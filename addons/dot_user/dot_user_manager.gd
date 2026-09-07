@@ -187,7 +187,7 @@ func _resolve_scope() -> DotResult:
 	if name.strip_edges() == "":
 		# Derived from the server's own id rather than a constant, so two servers
 		# that both forgot to configure a scope do not silently share profiles.
-		name = "server:%s" % (server_id if server_id != "" else OS.get_unique_id())
+		name = "server:%s" % (server_id if server_id != "" else DotPlatform.unique_id())
 
 	var path := config.scope_key_file
 

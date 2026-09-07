@@ -19,9 +19,9 @@ Display name, avatar reference, preferences. Pluggable storage — a JSON direct
 in-memory store, or an open HTTP backbone anyone can self-host. Resolved once on join,
 cached, and never re-read on the hot path.
 
-Part of the [dot-\*](../) family. Requires [dot-core](../dot-core). Works with
-[dot-auth](../dot-auth), [dot-server](../dot-server) and
-[dot-user-avatar](../dot-user-avatar), and imports none of them.
+Part of the [dot-\*](https://github.com/modcommunity) family. Requires [dot-core](https://github.com/modcommunity/dot-core). Works with
+[dot-auth](https://github.com/modcommunity/dot-auth), [dot-server](https://github.com/modcommunity/dot-server) and
+[dot-user-avatar](https://github.com/modcommunity/dot-user-avatar), and imports none of them.
 
 ## Install
 
