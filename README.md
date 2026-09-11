@@ -14,7 +14,7 @@ I intend on reviewing code, testing, and editing documentation regularly. If you
 ## Profiles That Follow a Player
 Player profiles that follow a person between servers, without letting those servers work out that it is the same person.
 
-Display name, avatar reference, preferences. Pluggable storage — a JSON directory, an in-memory store, or an open HTTP backbone anyone can self-host. Resolved once on join, cached, and never re-read on the hot path.
+Display name, avatar reference, preferences. Pluggable storage: a JSON directory, an in-memory store, or an open HTTP backbone anyone can self-host. Resolved once on join, cached, and never re-read on the hot path.
 
 Part of the [dot-\*](https://github.com/modcommunity) family. Requires [dot-core](https://github.com/modcommunity/dot-core). Works with [dot-auth](https://github.com/modcommunity/dot-auth), [dot-server](https://github.com/modcommunity/dot-server) and [dot-user-avatar](https://github.com/modcommunity/dot-user-avatar), and imports none of them.
 
@@ -29,7 +29,7 @@ var manager := DotUserManager.new()
 manager.server_id = "eu-west-1"
 add_child(manager)
 
-# identity is anything with uid, display_name and is_guest — DotAuthIdentity,
+# identity is anything with uid, display_name and is_guest, such as DotAuthIdentity,
 # dot-server's DotGuestIdentity, or your own.
 var resolved := await manager.resolve(identity)
 if resolved.ok:
@@ -68,18 +68,18 @@ Three properties, and dropping any one makes it theatre: the key never leaves th
 
 ## Display names
 
-A display name is the most hostile string a platform accepts — it is shown to every other player and chosen by the person it is shown for. `DotUserName` strips bidirectional overrides, zero-width characters, stacked combining marks and control characters, collapses whitespace, and refuses names that are empty, over-long, or made entirely of punctuation.
+A display name is the most hostile string a platform accepts, because it is shown to every other player and chosen by the person it is shown for. `DotUserName` strips bidirectional overrides, zero-width characters, stacked combining marks and control characters, collapses whitespace, and refuses names that are empty, over-long, or made entirely of punctuation.
 
 It says nothing about whether a name is *offensive*. That is a policy question with a different answer in every community, and `DotUserManager.name_filter` is the hook.
 
-By default an authenticated player cannot rename themselves — their name comes from their account, and a player who can override it can appear as somebody else. Guests have no account name, so they can pick one.
+By default an authenticated player cannot rename themselves. Their name comes from their account, and a player who can override it can appear as somebody else. Guests have no account name, so they can pick one.
 
 ## Storage
 
 `DotUserStore` follows the same two rules as dot-server's ban store, for the same reasons:
 
 - **Loads may be slow; lookups on the join path may not.** A resolved profile stays cached after the player leaves, so a map change does not re-read for everyone at once.
-- **A failed read never destroys a profile.** If the store cannot answer, the player gets a session-only profile that `save()` refuses to persist. Writing a fresh one would overwrite the real profile on disconnect — a network blip turned into data loss.
+- **A failed read never destroys a profile.** If the store cannot answer, the player gets a session-only profile that `save()` refuses to persist. Writing a fresh one would overwrite the real profile on disconnect, turning a network blip into data loss.
 
 ## Validating
 
