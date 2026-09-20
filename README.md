@@ -90,4 +90,6 @@ godot --headless --path . res://examples/user_demo.tscn     # 137 checks
 
 Exits non-zero on failure.
 
-MIT licensed.
+## Licence
+
+MIT. See [LICENSE](LICENSE).
