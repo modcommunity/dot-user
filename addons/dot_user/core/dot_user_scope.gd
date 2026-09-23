@@ -40,7 +40,9 @@ extends RefCounted
 ## gives it stable per-player profiles that no other server can correlate: the same
 ## guarantee, without the platform.
 
-const CHANNEL := "user.scope"
+# No log channel: a keyed derivation. It touches nothing outside the process, and the
+# one event worth an operator's attention -- generating a key that must be backed up --
+# is logged by DotUserManager, which is what writes the file.
 
 ## Separator between the scope and the account id inside the MAC input.
 ##

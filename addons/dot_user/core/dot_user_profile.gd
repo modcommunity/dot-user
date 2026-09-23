@@ -18,7 +18,9 @@ extends Resource
 ## keyed on the account id would let any two server operators correlate their players
 ## by comparing files.
 
-const CHANNEL := "user.profile"
+# No log channel: a value object. validate(), from_dict() and migrate() return a
+# DotResult and DotUserManager, which holds the player and the store, logs what it does
+# with one -- a profile it cannot read degrades the player with a WARN there.
 
 ## Bumped when the stored shape changes. See [method migrate].
 const SCHEMA_VERSION := 1

@@ -29,7 +29,8 @@ extends RefCounted
 ## offensive, which is a policy question with a different answer in every community.
 ## [member DotUserManager.name_filter] is the hook for that.
 
-const CHANNEL := "user.name"
+# No log channel: a static validator. It returns a DotResult whose message is written
+# for the player, and the caller knows who asked and whether the refusal matters.
 
 const MIN_LENGTH := 2
 

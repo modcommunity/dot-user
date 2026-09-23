@@ -175,6 +175,7 @@ func store(profile: DotUserProfile) -> DotResult:
 		store_count += 1
 	else:
 		failure_count += 1
+		_report_write_failure("a profile was not saved", profile.user_key, res)
 
 	return res
 
@@ -195,7 +196,32 @@ func remove(user_key: String) -> DotResult:
 		if not opened.ok:
 			return opened
 
-	return await _remove(user_key)
+	var res: DotResult = await _remove(user_key)
+
+	if not res.ok:
+		failure_count += 1
+		_report_write_failure("a profile was not removed", user_key, res)
+
+	return res
+
+
+## Logged here, in the base, because this is the one place every backend's write passes
+## through -- the local directory, the backbone, and whatever a game subclasses -- so a
+## new store gets the line for free and none can forget it.
+##
+## [b]ERROR, because the profile had already passed validation.[/b] A refusal before this
+## point is the rules working and is the caller's to report; a failure here is a player's
+## name or settings not persisting against a disk or a service, and the player is only
+## ever told "try again". Only the WRITE paths: a failed [method open] or [method fetch]
+## is reported by [DotUserManager], which degrades the player to a session-only profile
+## with a WARN of its own, and a second line here would say the same thing twice.
+func _report_write_failure(what: String, user_key: String, res: DotResult) -> void:
+	DotLog.error(CHANNEL, what, {
+		"store": _store_name(),
+		"key": user_key,
+		"code": res.code(),
+		"error": res.error.message if res.error != null else "",
+	})
 
 
 func describe() -> Dictionary:
