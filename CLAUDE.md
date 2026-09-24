@@ -151,7 +151,7 @@ find . -name '*.gd' -not -path './.godot/*' | while read f; do
     godot --headless --path . --check-only --script "res://${f#./}"
 done
 
-# 137 checks, all offline. Exits non-zero on any failure.
+# 143 checks, all offline. Exits non-zero on any failure.
 godot --headless --path . res://examples/user_demo.tscn
 ```
 

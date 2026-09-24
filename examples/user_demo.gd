@@ -16,6 +16,18 @@ extends Node
 const SCOPE_KEY := "user://test_scope.key"
 const PROFILE_DIR := "user://test_profiles"
 
+## Sections entered against sections that ran to their last line, and against this. A
+## runtime error inside a section aborts that function and nothing says so; a section that
+## bailed out early after a failed guard is counted as not finished on purpose.
+const SECTIONS := 12
+
+## Every check this suite runs, including the two at the end that compare the counts. The
+## section counter cannot see a section that aborted after announcing itself — its remaining
+## checks simply never run — and a total can. See docs/testing.md.
+const CHECKS := 143
+
+var _entered := 0
+var _completed := 0
 var _passed := 0
 var _failed := 0
 var _failures := PackedStringArray()
@@ -71,6 +83,15 @@ func _run() -> void:
 	_cleanup()
 
 	print("")
+	# The two guards, as the last two checks. See docs/testing.md.
+	_check(
+		_completed == _entered and _entered == SECTIONS,
+		"every section ran to its last line (%d of %d)" % [_completed, SECTIONS]
+	)
+	_check(
+		_passed + _failed + 1 == CHECKS,
+		"every check ran (%d of %d)" % [_passed + _failed + 1, CHECKS]
+	)
 	print("%d passed, %d failed" % [_passed, _failed])
 
 	for line in _failures:
@@ -87,6 +108,16 @@ func _cleanup() -> void:
 
 # --- Assertions ------------------------------------------------------------
 
+func _section(title: String) -> void:
+	_entered += 1
+	print(title)
+
+
+## A section reached its last line. See [constant SECTIONS].
+func _done() -> void:
+	_completed += 1
+
+
 func _check(condition: bool, what: String, detail: String = "") -> bool:
 	if condition:
 		_passed += 1
@@ -101,7 +132,7 @@ func _check(condition: bool, what: String, detail: String = "") -> bool:
 # --- Scope -----------------------------------------------------------------
 
 func _test_scope() -> void:
-	print("scoped identity")
+	_section("scoped identity")
 
 	var key := DotHash.random_bytes(32)
 	var server_a := DotUserScope.with_key("server:a", key)
@@ -202,12 +233,13 @@ func _test_scope() -> void:
 			not DotUserScope.is_well_formed(bad),
 			"'%s' is not mistaken for an id" % bad.substr(0, 20)
 		)
+	_done()
 
 
 # --- Names -----------------------------------------------------------------
 
 func _test_names() -> void:
-	print("display names")
+	_section("display names")
 
 	_check(DotUserName.sanitise("  Ada  ") == "Ada", "spaces are trimmed")
 	_check(
@@ -302,12 +334,13 @@ func _test_names() -> void:
 	_check(
 		DotUserName.validate(fallback).ok, "and is itself a valid name"
 	)
+	_done()
 
 
 # --- Profile ---------------------------------------------------------------
 
 func _test_profile() -> void:
-	print("profiles")
+	_section("profiles")
 
 	var key := DotHash.random_bytes(32)
 	var user_key: String = DotUserScope.with_key("s", key).derive("a").value
@@ -397,6 +430,7 @@ func _test_profile() -> void:
 			== DotUserProfile.SCHEMA_VERSION,
 		"and comes back at the current version"
 	)
+	_done()
 
 
 # --- The store contract ----------------------------------------------------
@@ -407,6 +441,7 @@ func _test_profile() -> void:
 ## sequence twice is how a bug in the file handling shows up as a difference rather
 ## than as a plausible-looking result.
 func _test_store_contract(store: DotUserStore, label: String) -> void:
+	_section("store contract")
 	print("store contract: %s" % label)
 
 	var key := DotHash.random_bytes(32)
@@ -477,10 +512,11 @@ func _test_store_contract(store: DotUserStore, label: String) -> void:
 	)
 
 	store.close()
+	_done()
 
 
 func _test_local_store_specifics() -> void:
-	print("local store")
+	_section("local store")
 
 	var store := DotUserStoreLocal.at(PROFILE_DIR)
 	var scope := DotUserScope.with_key("s", DotHash.random_bytes(32))
@@ -533,6 +569,7 @@ func _test_local_store_specifics() -> void:
 	)
 
 	store.close()
+	_done()
 
 
 # --- The manager -----------------------------------------------------------
@@ -557,7 +594,7 @@ func _make_manager(backend: String = "memory") -> DotUserManager:
 
 
 func _test_manager_resolve() -> void:
-	print("manager: resolving")
+	_section("manager: resolving")
 
 	var manager := _make_manager()
 	var ready: DotResult = await manager.setup()
@@ -637,10 +674,11 @@ func _test_manager_resolve() -> void:
 	)
 
 	manager.queue_free()
+	_done()
 
 
 func _test_manager_degraded() -> void:
-	print("manager: a store that cannot answer")
+	_section("manager: a store that cannot answer")
 
 	var manager := _make_manager()
 	var ready: DotResult = await manager.setup()
@@ -693,10 +731,11 @@ func _test_manager_degraded() -> void:
 	)
 
 	manager.queue_free()
+	_done()
 
 
 func _test_manager_names() -> void:
-	print("manager: names")
+	_section("manager: names")
 
 	var manager := _make_manager()
 	var ready: DotResult = await manager.setup()
@@ -785,10 +824,11 @@ func _test_manager_names() -> void:
 	_check(limited, "profile writes are rate limited per player")
 
 	manager.queue_free()
+	_done()
 
 
 func _test_manager_cache() -> void:
-	print("manager: caching")
+	_section("manager: caching")
 
 	var manager := _make_manager()
 	var ready: DotResult = await manager.setup()
@@ -843,10 +883,11 @@ func _test_manager_cache() -> void:
 	_check(described.size() >= 4, "describe_lines produces something usable")
 
 	manager.queue_free()
+	_done()
 
 
 func _test_read_only() -> void:
-	print("manager: read-only")
+	_section("manager: read-only")
 
 	var manager := _make_manager()
 	manager.config.read_only = true
@@ -871,6 +912,7 @@ func _test_read_only() -> void:
 	)
 
 	manager.queue_free()
+	_done()
 
 
 class HangingStore extends DotUserStoreMemory:
@@ -881,7 +923,7 @@ class HangingStore extends DotUserStoreMemory:
 
 
 func _test_manager_timeout() -> void:
-	print("manager: a store that never answers")
+	_section("manager: a store that never answers")
 
 	var manager := _make_manager()
 	var ready: DotResult = await manager.setup()
@@ -901,3 +943,4 @@ func _test_manager_timeout() -> void:
 	_check(took >= 400, "and not before it", "%d ms" % took)
 
 	manager.queue_free()
+	_done()
