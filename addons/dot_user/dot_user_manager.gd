@@ -34,6 +34,10 @@ extends Node
 const CHANNEL := "user"
 const SERVICE := &"dot_user_manager"
 
+## A key the backbone issued: its own `ScopeKeyRx`. Checked because it becomes a file
+## name in the local store and a path segment on the backbone.
+static var ISSUED_KEY_RX := RegEx.create_from_string("^[A-Za-z0-9_-]{8,64}$")
+
 ## Emitted once a profile is resolved, on the peer that resolved it.
 signal profile_resolved(profile: DotUserProfile)
 
@@ -280,6 +284,24 @@ func key_for(identity: Object) -> DotResult:
 			DotError.CODE_FORBIDDEN,
 			"Guest profiles are not enabled on this server.",
 			uid
+		)
+
+	# [b]A key the backbone issued wins over one derived here.[/b] dot-auth's scoped
+	# introspection puts the player's key for THIS server in the `scoped_key` claim —
+	# minted by the site, for the scope the server's own credential names. A key derived
+	# from this server's local secret is a perfectly good pseudonym and one the backbone
+	# can never resolve, so a server that derived one found nobody's avatar or profile,
+	# ever. The claim comes from the auth layer, never from the client.
+	var claims: Variant = identity.get("claims")
+
+	if claims is Dictionary and (claims as Dictionary).has("scoped_key"):
+		var issued := str((claims as Dictionary)["scoped_key"])
+
+		if ISSUED_KEY_RX.search(issued) != null:
+			return DotResult.success(issued)
+
+		return DotResult.fail(
+			DotError.CODE_INVALID, "The backbone issued a key this server cannot use.", issued
 		)
 
 	if scope == null:

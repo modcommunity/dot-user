@@ -24,7 +24,7 @@ const SECTIONS := 12
 ## Every check this suite runs, including the two at the end that compare the counts. The
 ## section counter cannot see a section that aborted after announcing itself — its remaining
 ## checks simply never run — and a total can. See docs/testing.md.
-const CHECKS := 143
+const CHECKS := 146
 
 var _entered := 0
 var _completed := 0
@@ -41,6 +41,15 @@ class FakeIdentity extends RefCounted:
 	var uid: String = ""
 	var display_name: String = ""
 	var is_guest: bool = false
+	var claims: Dictionary = {}
+
+	## What dot-auth's scoped introspection produces: no account id, the backbone's key.
+	static func site(key: String, name: String) -> FakeIdentity:
+		var i := FakeIdentity.new()
+		i.uid = "site:%s" % key
+		i.display_name = name
+		i.claims = {"scoped_key": key}
+		return i
 
 	static func account(id: String, name: String) -> FakeIdentity:
 		var i := FakeIdentity.new()
@@ -651,6 +660,26 @@ func _test_manager_resolve() -> void:
 		)
 
 	other.queue_free()
+
+	# A key the backbone issued is used as it is. A key derived here from this server's
+	# own secret is one the backbone can never resolve, so every avatar and profile it
+	# holds would be unreachable.
+	var issued := "Abc_def-123456789012zz"
+	var from_site: DotResult = manager.key_for(FakeIdentity.site(issued, "Bea"))
+	_check(
+		from_site.ok and str(from_site.value) == issued,
+		"a key the backbone issued is the profile key, not re-derived",
+		str(from_site.value) if from_site.ok else str(from_site.error)
+	)
+	var site_profile: DotResult = await manager.resolve(FakeIdentity.site(issued, "Bea"))
+	_check(
+		site_profile.ok and (site_profile.value as DotUserProfile).user_key == issued,
+		"and the profile resolves under it"
+	)
+	_check(
+		not manager.key_for(FakeIdentity.site("../../etc", "X")).ok,
+		"an issued key that could leave the store's directory is refused"
+	)
 
 	var guest := FakeIdentity.guest("device-1", "Visitor")
 	var guest_resolved: DotResult = await manager.resolve(guest)
