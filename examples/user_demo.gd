@@ -46,7 +46,7 @@ class FakeIdentity extends RefCounted:
 	## What dot-auth's scoped introspection produces: no account id, the backbone's key.
 	static func site(key: String, name: String) -> FakeIdentity:
 		var i := FakeIdentity.new()
-		i.uid = "site:%s" % key
+		i.uid = "tmc:%s" % key
 		i.display_name = name
 		i.claims = {"scoped_key": key}
 		return i
