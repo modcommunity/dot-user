@@ -20,7 +20,7 @@ extends DotUserStore
 ## profiles for players currently connected to it, and nothing more. The moment a
 ## server can present a player's own account token, every operator has a live
 ## credential for every player's whole account, which is the exact failure dot-auth's
-## ticket flow exists to prevent. See dot-auth's CLAUDE.md.
+## ticket flow exists to prevent. See dot-auth's docs/tickets.md.
 
 const BACKBONE_CHANNEL := "user.store.backbone"
 
