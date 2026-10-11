@@ -58,7 +58,22 @@ Both solve the same problem (a per-player record a community running eight serve
 
 `DotUserStoreLocal` writes one file per profile, not one for all: a single file rewrites everything on every change once there are a few thousand returning players, and a crash midway loses every profile rather than one.
 
-`DotUserStoreBackbone` speaks four endpoints (`GET`/`PUT`/`DELETE /user/profile`, `GET /user/{key}/public`) and must never hold a credential that works anywhere else: a server holds a token scoped to profiles of players connected to it, never a player's own account token (dot-auth's [tickets](../../dot-auth/docs/tickets.md) are why).
+`DotUserStoreBackbone` must never hold a credential that works anywhere else: a server holds a token scoped to profiles of players connected to it, never a player's own account token (dot-auth's [tickets](../../dot-auth/docs/tickets.md) are why).
+
+## The backbone protocol
+
+Four endpoints under the integration base URL, all addressed by the scoped key (the one dot-auth's introspection puts in the `scoped_key` claim, which `key_for` prefers for exactly this reason: a key derived from a local secret is one the backbone can never resolve):
+
+| Request | Answer |
+| --- | --- |
+| `GET /user/{key}/profile` | `{ "ok": true, "profile": <to_dict()> }`, or `404` for a first-time player (a successful null, never a failure) |
+| `PUT /user/{key}/profile` | body `to_dict()`; the backbone holds it to `DotUserProfile.validate`'s bounds, because a document this addon refuses on read would fail that player's every join |
+| `DELETE /user/{key}/profile` | `200`; `404` also counts as erased |
+| `GET /user/{key}/public` | exactly `to_public_dict()`, unwrapped, for a scoreboard |
+
+website-city implements it (`PROFILE_READ` / `PROFILE_WRITE` scopes, its `docs/api/integration-api.md`). A key resolves only in the credential's own scope: an app-bound credential shares profiles across that app's servers, a server-bound one keeps them to the server.
+
+**The HTTP client has to be in the tree.** `DotHttp` is a Node that sends through `HTTPRequest` children, and the store is a `RefCounted`. It used to build an orphan client, so every request failed with engine error 3 (Unconfigured) before reaching the network and every player got a session-only profile; no check in the suite ever opened this store, so nothing noticed. `_open` now parents the client it builds to the root (deferred, then awaits a frame, since `open()` can run inside somebody's `_ready`) and `_close` frees it; a client the caller supplies is the caller's. The suite's "backbone store transport" section proves it against a closed loopback port.
 
 ## Bounds, and why they are not optional
 

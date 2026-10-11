@@ -19,12 +19,12 @@ const PROFILE_DIR := "user://test_profiles"
 ## Sections entered against sections that ran to their last line, and against this. A
 ## runtime error inside a section aborts that function and nothing says so; a section that
 ## bailed out early after a failed guard is counted as not finished on purpose.
-const SECTIONS := 12
+const SECTIONS := 13
 
 ## Every check this suite runs, including the two at the end that compare the counts. The
 ## section counter cannot see a section that aborted after announcing itself — its remaining
 ## checks simply never run — and a total can. See docs/testing.md.
-const CHECKS := 146
+const CHECKS := 152
 
 var _entered := 0
 var _completed := 0
@@ -88,6 +88,7 @@ func _run() -> void:
 	await _test_manager_names()
 	await _test_manager_cache()
 	await _test_read_only()
+	await _test_backbone_transport()
 
 	_cleanup()
 
@@ -973,3 +974,46 @@ func _test_manager_timeout() -> void:
 
 	manager.queue_free()
 	_done()
+
+
+# --- Backbone store --------------------------------------------------------
+
+## The backbone store's HTTP client has to be IN THE TREE to send anything.
+##
+## [DotHttp] is a Node whose requests are HTTPRequest children, and the store is a
+## RefCounted. It used to build an orphan client, so every fetch and every save failed
+## with engine error 3 (Unconfigured) before reaching the network, and every player on a
+## server using it got a session-only profile. Nothing here needs a backbone: a closed
+## loopback port answers "connection refused", which is a different error from the one
+## an orphan client gives.
+func _test_backbone_transport() -> void:
+	_section("backbone store transport")
+
+	var no_url := DotUserStoreBackbone.at("", "tmci_test")
+	var refused: DotResult = await no_url.open()
+	_check(not refused.ok and no_url.http == null, "no URL is refused, and builds no client")
+
+	var store := DotUserStoreBackbone.at("http://127.0.0.1:9", "tmci_test")
+	store.timeout_sec = 3.0
+	var opened: DotResult = await store.open()
+	_check(opened.ok, "a loopback URL with a token opens")
+	_check(
+		store.http != null and store.http.is_inside_tree(),
+		"and its HTTP client is in the tree before the first request"
+	)
+
+	var res: DotResult = await store.fetch("AbCdEfGhIjKlMnOpQrStUv")
+	var why := str(res.error) if res.error != null else ""
+	_check(not res.ok, "an unreachable backbone is a failure, never an absent profile")
+	_check(
+		not why.contains("Unconfigured"),
+		"and the request reached the network (%s)" % why.substr(0, 120)
+	)
+
+	var client := store.http
+	store.close()
+	await get_tree().process_frame
+	_check(not is_instance_valid(client), "closing frees the client the store built")
+
+	_done()
+

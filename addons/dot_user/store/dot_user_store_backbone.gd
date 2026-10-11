@@ -9,10 +9,10 @@ extends DotUserStore
 ## version. So this speaks four boring endpoints and has no opinion about storage:
 ##
 ## [codeblock]
-## GET    /user/profile              the caller's own profile
-## PUT    /user/profile              publish it
+## GET    /user/{key}/profile        a player's profile (404: first-time player)
+## PUT    /user/{key}/profile        publish it
 ## GET    /user/{key}/public         the public half of somebody else's
-## DELETE /user/profile              erase it
+## DELETE /user/{key}/profile        erase it (404 counts as erased)
 ## [/codeblock]
 ##
 ## [b]What this must never do is hold a credential that works anywhere else.[/b] A
@@ -43,6 +43,10 @@ var read_only: bool = false
 
 ## Seconds a request may take before it is abandoned.
 var timeout_sec: float = 8.0
+
+## Whether [member http] was built (and parented to the root) by this store, so
+## [method _close] frees it.
+var _owns_http: bool = false
 
 
 static func at(url: String, token: String) -> DotUserStoreBackbone:
@@ -96,11 +100,42 @@ func _open() -> DotResult:
 
 	if http == null:
 		http = DotHttp.new()
+		http.name = "DotUserStoreBackboneHttp"
+		_owns_http = true
 
 	http.base_url = base_url
 	http.timeout_sec = timeout_sec
 
+	# [b]DotHttp is a Node and sends through HTTPRequest children, which only work
+	# inside the tree.[/b] This store is a RefCounted with no tree of its own, and an
+	# orphan client fails every request with engine error 3 (Unconfigured) -- so the
+	# store did, every fetch and every save, and the manager degraded every player to a
+	# session-only profile. Parented to the root, deferred because open() may run inside
+	# somebody's _ready while the root is busy adding children, then awaited a frame so
+	# the first request already finds it in the tree.
+	if not http.is_inside_tree():
+		var tree := Engine.get_main_loop() as SceneTree
+
+		if tree == null:
+			return DotResult.fail(
+				DotError.CODE_STATE,
+				"The backbone profile store needs a running scene tree for its HTTP client."
+			)
+
+		if http.get_parent() == null:
+			tree.root.add_child.call_deferred(http)
+
+		await tree.process_frame
+
 	return DotResult.success(true)
+
+
+func _close() -> void:
+	# Only a client this store built: one a caller supplied is the caller's to free.
+	if _owns_http and is_instance_valid(http):
+		http.queue_free()
+		http = null
+		_owns_http = false
 
 
 static func _is_loopback(url: String) -> bool:

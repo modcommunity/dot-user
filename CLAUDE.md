@@ -44,6 +44,7 @@ The family's two steps ([game-dev/CLAUDE.md](../../CLAUDE.md#validating-anything
 - No store lookup on the join path; a failed read gives a session-only profile (`created_at == 0`) that is never saved. [design](docs/design.md#storage-rules-shared-with-dot-servers-ban-store)
 - Absent is a successful null from `_fetch`, never an error; a read failure is never "absent". [design](docs/design.md#storage-rules-shared-with-dot-servers-ban-store)
 - A server never holds a player's own account token. [design](docs/design.md#storage-rules-shared-with-dot-servers-ban-store)
+- `DotUserStoreBackbone` parents the `DotHttp` it builds to the root in `_open` and frees it in `_close`: an orphan `DotHttp` fails every request with engine error 3 (Unconfigured). [design](docs/design.md#the-backbone-protocol)
 - `DotUserProfile.validate` runs on read and write; only `to_public_dict` is relayed. [design](docs/design.md#bounds-and-why-they-are-not-optional)
 - Never import dot-auth; `register_service` is on by default here. [design](docs/design.md#coupling-nothing-is-imported)
 
@@ -51,4 +52,4 @@ Deliberately not here: friends, parties, presence, save data, global name unique
 
 ## Open
 
-- `DotUserStoreBackbone`'s `/user/profile` endpoints are not served by website-city main: `src/app/api/integration/v1/user/` has only `[key]/avatar` and `lookup`. Profiles stay per server (memory or local store) until it does.
+- **No game uses `DotUserStoreBackbone` yet.** website-city serves its four endpoints (`user/{key}/profile`, `user/{key}/public`, scopes `PROFILE_READ`/`PROFILE_WRITE`), and a headless round trip through this store works; but dot-platform's `DotPlatformIdentity` still builds a local profile store, and enrolled server credentials are not granted the profile scopes. Wiring both is the remaining step (nightly queue).
