@@ -49,7 +49,3 @@ The family's two steps ([game-dev/CLAUDE.md](../../CLAUDE.md#validating-anything
 - Never import dot-auth; `register_service` is on by default here. [design](docs/design.md#coupling-nothing-is-imported)
 
 Deliberately not here: friends, parties, presence, save data, global name uniqueness, password hashing, profile history. [design](docs/design.md#deliberately-not-here)
-
-## Open
-
-- **No game uses `DotUserStoreBackbone` yet.** website-city serves its four endpoints (`user/{key}/profile`, `user/{key}/public`, scopes `PROFILE_READ`/`PROFILE_WRITE`), and a headless round trip through this store works; but dot-platform's `DotPlatformIdentity` still builds a local profile store, and enrolled server credentials are not granted the profile scopes. Wiring both is the remaining step (nightly queue).

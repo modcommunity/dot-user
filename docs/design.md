@@ -73,6 +73,8 @@ Four endpoints under the integration base URL, all addressed by the scoped key (
 
 website-city implements it (`PROFILE_READ` / `PROFILE_WRITE` scopes, its `docs/api/integration-api.md`). A key resolves only in the credential's own scope: an app-bound credential shares profiles across that app's servers, a server-bound one keeps them to the server.
 
+**Who uses it.** dot-platform's `DotPlatformIdentity` builds this store on the server's integration credential and routes only keys the site issued to it (the `scoped_key` claim); a key derived from the local secret is one the backbone answers 404 for, so it stays on the local store (dot-platform's docs/design.md). Enrolled server credentials hold `PROFILE_READ`/`PROFILE_WRITE`.
+
 **The HTTP client has to be in the tree.** `DotHttp` is a Node that sends through `HTTPRequest` children, and the store is a `RefCounted`. It used to build an orphan client, so every request failed with engine error 3 (Unconfigured) before reaching the network and every player got a session-only profile; no check in the suite ever opened this store, so nothing noticed. `_open` now parents the client it builds to the root (deferred, then awaits a frame, since `open()` can run inside somebody's `_ready`) and `_close` frees it; a client the caller supplies is the caller's. The suite's "backbone store transport" section proves it against a closed loopback port. Because `_open` now suspends, `DotUserStore.open()` runs one attempt at a time and a second caller waits for its result: a manager's `_ready` and its host's `setup()` both open the store, and two overlapping attempts queued the same client onto the root twice (an engine error on every boot).
 
 ## Bounds, and why they are not optional
