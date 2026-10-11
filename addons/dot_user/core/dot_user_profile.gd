@@ -85,9 +85,9 @@ const MAX_LOCALE := 16
 ## Whether the player has finished first-time setup.
 ##
 ## What a join flow branches on: a player who is signed in but has not been through
-## the avatar editor should be held at a profile stage rather than spawned. dot-server has
-## no such stage yet, so today it is read after the spawn; see dot-platform's
-## docs/design.md ("Admission runs after the spawn") and queue item profile-stage-1.
+## the avatar editor is held at dot-server's PROFILE signon stage rather than spawned,
+## and dot-platform refuses them there under `require_avatar`; see dot-platform's
+## docs/design.md ("Admission gates the spawn").
 @export var onboarded: bool = false
 
 @export_group("Preferences")
