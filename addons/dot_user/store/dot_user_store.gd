@@ -78,6 +78,12 @@ func _store_name() -> String:
 
 var _opened: bool = false
 
+## Emitted when an attempt [method open] started finishes, for callers that arrived
+## while it was in flight.
+signal _open_finished(res: DotResult)
+
+var _opening: bool = false
+
 ## Profiles read since opening. Diagnostic.
 var fetch_count: int = 0
 var store_count: int = 0
@@ -88,13 +94,25 @@ func open() -> DotResult:
 	if _opened:
 		return DotResult.success(true)
 
+	# [b]One attempt at a time; a second caller waits for the first.[/b] _open can
+	# suspend (the backbone store waits a frame for its HTTP client to enter the tree),
+	# and a manager's _ready and its host's explicit setup() both open the store. Two
+	# overlapping attempts each queued the same client onto the root, and the second
+	# add_child was an engine error on every server boot.
+	if _opening:
+		var shared: DotResult = await _open_finished
+		return shared
+
+	_opening = true
 	var res := await _open()
+	_opening = false
 
 	if res.ok:
 		_opened = true
 	else:
 		failure_count += 1
 
+	_open_finished.emit(res)
 	return res
 
 

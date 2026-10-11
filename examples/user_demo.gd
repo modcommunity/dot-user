@@ -24,7 +24,7 @@ const SECTIONS := 13
 ## Every check this suite runs, including the two at the end that compare the counts. The
 ## section counter cannot see a section that aborted after announcing itself — its remaining
 ## checks simply never run — and a total can. See docs/testing.md.
-const CHECKS := 152
+const CHECKS := 153
 
 var _entered := 0
 var _completed := 0
@@ -1015,5 +1015,35 @@ func _test_backbone_transport() -> void:
 	await get_tree().process_frame
 	_check(not is_instance_valid(client), "closing frees the client the store built")
 
+	# A manager's _ready and its host's setup() both open the store. Two overlapping
+	# opens each queued the same client onto the root, and the second add_child was an
+	# engine error on every boot.
+	var slow := SlowOpenStore.new()
+	var results: Array = []
+	var opener := func() -> void: results.append(await slow.open())
+	opener.call()
+	opener.call()
+	for _i in 30:
+		if results.size() == 2:
+			break
+		await get_tree().process_frame
+	_check(
+		results.size() == 2 and slow.attempts == 1 and (results[0] as DotResult).ok
+			and (results[1] as DotResult).ok,
+		"two overlapping opens share one attempt (%d results, %d attempts)" % [
+			results.size(), slow.attempts
+		]
+	)
+
 	_done()
+
+
+## A store whose open suspends for a frame, as the backbone store's does.
+class SlowOpenStore extends DotUserStoreMemory:
+	var attempts := 0
+
+	func _open() -> DotResult:
+		attempts += 1
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return DotResult.success(true)
 

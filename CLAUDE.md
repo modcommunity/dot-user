@@ -44,7 +44,7 @@ The family's two steps ([game-dev/CLAUDE.md](../../CLAUDE.md#validating-anything
 - No store lookup on the join path; a failed read gives a session-only profile (`created_at == 0`) that is never saved. [design](docs/design.md#storage-rules-shared-with-dot-servers-ban-store)
 - Absent is a successful null from `_fetch`, never an error; a read failure is never "absent". [design](docs/design.md#storage-rules-shared-with-dot-servers-ban-store)
 - A server never holds a player's own account token. [design](docs/design.md#storage-rules-shared-with-dot-servers-ban-store)
-- `DotUserStoreBackbone` parents the `DotHttp` it builds to the root in `_open` and frees it in `_close`: an orphan `DotHttp` fails every request with engine error 3 (Unconfigured). [design](docs/design.md#the-backbone-protocol)
+- `DotUserStoreBackbone` parents the `DotHttp` it builds to the root in `_open` and frees it in `_close`: an orphan `DotHttp` fails every request with engine error 3 (Unconfigured). `open()` runs one attempt at a time. [design](docs/design.md#the-backbone-protocol)
 - `DotUserProfile.validate` runs on read and write; only `to_public_dict` is relayed. [design](docs/design.md#bounds-and-why-they-are-not-optional)
 - Never import dot-auth; `register_service` is on by default here. [design](docs/design.md#coupling-nothing-is-imported)
 
